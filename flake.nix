@@ -34,12 +34,10 @@
 
         inherit (pkgs) lib;
 
-        rustToolchain = pkgs.rust-bin.stable.latest.default;
-        craneLib = ((crane.mkLib pkgs).overrideToolchain rustToolchain).overrideScope' (_final: _prev: {
-          # The version of wasm-bindgen-cli needs to match the version in Cargo.lock. You
-          # can unpin this if your nixpkgs commit contains the appropriate wasm-bindgen-cli version
-          inherit (import nixpkgs-for-wasm-bindgen { inherit system; }) wasm-bindgen-cli;
-        });
+        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-src" ];
+        };
+        craneLib = ((crane.mkLib pkgs).overrideToolchain rustToolchain);
 
         # When filtering sources, we want to allow assets other than .rs files
         src = lib.cleanSourceWith {
@@ -110,9 +108,15 @@
         devShells.default = craneLib.devShell {
           # Inherit inputs from checks.
           checks = self.checks.${system};
+          buildInputs = [
+            pkgs.rust-analyzer-unwrapped
+            rustToolchain
+          ];
 
           shellHook = ''
           '';
+
+          RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
 
           # Extra inputs can be added here; cargo and rustc are provided by default.
           packages = [
