@@ -6,63 +6,144 @@ pub struct Schematic {
     map: Vec<Vec<char>>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct Number {
+    line: usize,
+    column: usize,
+    width: usize,
+    pub value: u32,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Symbol {
+    line: usize,
+    column: usize,
+}
+
 impl Schematic {
-    pub fn sum(&self) -> u32 {
-        let mut sum = 0;
+    pub fn part_numbers(&self) -> Vec<Number> {
         let mut i = 0;
+        let mut result = Vec::new();
 
         while i < self.map.len() {
             let mut j = 0;
             while j < self.map[i].len() {
-                if self.map[i][j].is_numeric() {
-                    let width = self.find_width(i, j);
-                    let part_number: u32 = self.map[i][j..j + width]
-                        .iter()
-                        .collect::<String>()
-                        .parse()
-                        .unwrap();
-                    if self.is_part_number(i as i32, j as i32, width) {
-                        sum += part_number;
+                if let Some(num) = self.find_next_number(i, j) {
+                    j = num.column + num.width;
+
+                    if self.is_part_number(&num) {
+                        result.push(num);
                     }
-                    j += width;
                 } else {
-                    j += 1;
+                    break;
                 }
             }
 
             i += 1;
         }
 
+        result
+    }
+
+    pub fn gear_ratios(&self) -> u32 {
+        let part_numbers = self.part_numbers();
+        let mut sum = 0;
+        for i in 0..part_numbers.len() {
+            for j in i + 1..part_numbers.len() {
+                if i == j {
+                    continue;
+                }
+
+                if self.gear_connected(&part_numbers[i], &part_numbers[j]) {
+                    sum += part_numbers[i].value * part_numbers[j].value;
+                }
+            }
+        }
+
         sum
     }
 
-    fn find_width(&self, line: usize, col: usize) -> usize {
+    fn find_next_number(&self, line: usize, column: usize) -> Option<Number> {
+        let mut start = 0;
         let mut width = 0;
-        for i in col..self.map[line].len() {
-            if self.map[line][i].is_numeric() {
+        for i in column..self.map[line].len() {
+            if self.map[line][i].is_numeric() && width > 0 {
                 width += 1;
-            } else {
+            } else if self.map[line][i].is_numeric() {
+                start = i;
+                width = 1;
+            } else if width > 0 {
                 break;
             }
         }
 
-        width
+        if width > 0 {
+            let start = start as usize;
+            Some(Number {
+                line,
+                column: start,
+                width,
+                value: self.get_number(line, start, width),
+            })
+        } else {
+            None
+        }
     }
 
-    fn is_part_number(&self, line: i32, column: i32, width: usize) -> bool {
+    fn gear_connected(&self, a: &Number, b: &Number) -> bool {
+        let a_symbols = self.get_symbols_near(a);
+        let b_symbols = self.get_symbols_near(b);
+
+        a_symbols.iter().any(|a_symbol| {
+            self.is_gear(a_symbol) && b_symbols.iter().any(|b_symbol| a_symbol == b_symbol)
+        })
+    }
+
+    fn get_number(&self, line: usize, column: usize, width: usize) -> u32 {
+        let number: u32 = self.map[line][column..column + width]
+            .iter()
+            .collect::<String>()
+            .parse()
+            .unwrap();
+
+        number
+    }
+
+    fn is_gear(&self, symbol: &Symbol) -> bool {
+        self.map[symbol.line][symbol.column] == '*'
+    }
+
+    fn get_symbols_near(&self, number: &Number) -> Vec<Symbol> {
+        let Number {
+            column,
+            line,
+            width,
+            ..
+        } = number;
+
+        let line = *line as i32;
+        let column = *column as i32;
+
         vec![
-            self.find_symbol(line - 1, column - 1, width + 2),
-            self.find_symbol(line + 1, column - 1, width + 2),
-            self.find_symbol(line, column - 1, 1),
-            self.find_symbol(line, column + width as i32, 1),
+            self.find_symbols(line - 1, column - 1, width + 2),
+            self.find_symbols(line + 1, column - 1, width + 2),
+            self.find_symbols(line, column - 1, 1),
+            self.find_symbols(line, column + *width as i32, 1),
         ]
-        .iter()
-        .any(|x| x.is_some())
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
-    fn find_symbol(&self, line: i32, column: i32, width: usize) -> Option<char> {
+    fn is_part_number(&self, number: &Number) -> bool {
+        self.get_symbols_near(number).len() > 0
+    }
+
+    fn find_symbols(&self, line: i32, column: i32, width: usize) -> Vec<Symbol> {
+        let mut results = Vec::new();
+
         if line < 0 || line >= self.map.len() as i32 {
-            return None;
+            return results;
         }
 
         let line = line as usize;
@@ -73,11 +154,11 @@ impl Schematic {
 
             let j = j as usize;
             if !self.map[line][j].is_numeric() && self.map[line][j] != '.' {
-                return Some(self.map[line][j]);
+                results.push(Symbol { line, column: j });
             }
         }
 
-        None
+        results
     }
 }
 
@@ -91,5 +172,34 @@ impl FromStr for Schematic {
             .collect::<Vec<_>>();
 
         Ok(Schematic { map })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_number() {
+        let schematic: Schematic = "467..114..".parse().unwrap();
+        assert_eq!(
+            schematic.find_next_number(0, 0),
+            Some(Number {
+                line: 0,
+                column: 0,
+                width: 3,
+                value: 467,
+            })
+        );
+
+        assert_eq!(
+            schematic.find_next_number(0, 3),
+            Some(Number {
+                line: 0,
+                column: 5,
+                width: 3,
+                value: 114,
+            })
+        );
     }
 }

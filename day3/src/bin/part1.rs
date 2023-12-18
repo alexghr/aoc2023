@@ -8,8 +8,8 @@ fn main() {
 
 fn process(input: &str) -> String {
     let schematic: Schematic = input.parse().unwrap();
-    let sum = schematic.sum();
-    sum.to_string()
+    let part_numbers = schematic.part_numbers();
+    part_numbers.iter().fold(0, |s, x| s + x.value).to_string()
 }
 
 #[cfg(test)]
