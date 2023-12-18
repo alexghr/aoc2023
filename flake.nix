@@ -82,12 +82,17 @@
           inherit cargoArtifacts;
           cargoExtraArgs = "--package day2";
         });
+        day3 = craneLib.buildPackage (nativeArgs // {
+          inherit cargoArtifacts;
+          cargoExtraArgs = "--package day3";
+        });
       in
       {
         checks = {
           # Build the crate as part of `nix flake check` for convenience
           inherit day1;
           inherit day2;
+          inherit day3;
 
           # Run clippy (and deny all warnings) on the crate source,
           # again, reusing the dependency artifacts from above.
@@ -120,6 +125,15 @@
         apps.day2-part2 = flake-utils.lib.mkApp {
           name = "part2";
           drv = day2;
+        };
+
+        apps.day3-part1 = flake-utils.lib.mkApp {
+          name = "part1";
+          drv = day3;
+        };
+        apps.day3-part2 = flake-utils.lib.mkApp {
+          name = "part2";
+          drv = day3;
         };
 
         devShells.default = craneLib.devShell {

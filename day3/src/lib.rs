@@ -78,7 +78,6 @@ impl Schematic {
         }
 
         if width > 0 {
-            let start = start as usize;
             Some(Number {
                 line,
                 column: start,
@@ -136,7 +135,7 @@ impl Schematic {
     }
 
     fn is_part_number(&self, number: &Number) -> bool {
-        self.get_symbols_near(number).len() > 0
+        !self.get_symbols_near(number).is_empty()
     }
 
     fn find_symbols(&self, line: i32, column: i32, width: usize) -> Vec<Symbol> {
