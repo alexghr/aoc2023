@@ -1,0 +1,19 @@
+name: Nix flake check
+
+on:
+  push:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Nix
+      uses: nixbuild/nix-quick-install-action@v26
+
+    - name: Run nix flake check
+      run: nix flake check
