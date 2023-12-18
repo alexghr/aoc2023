@@ -3,7 +3,7 @@ use regex::Regex;
 fn main() {
     let input = include_str!("../../input/part2.txt");
     let result = process(input);
-    println!("Result (part2): {}", result);
+    println!("Result (day 1/part 2): {}", result);
 }
 
 fn process(input: &str) -> String {

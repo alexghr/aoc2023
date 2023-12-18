@@ -3,7 +3,7 @@ use day2::Game;
 fn main() {
     let input = include_str!("../../input/part2.txt");
     let result = process(input);
-    println!("Result (part2): {}", result);
+    println!("Result (day 2/part 2): {}", result);
 }
 
 fn process(input: &str) -> String {

@@ -42,7 +42,9 @@
         # When filtering sources, we want to allow assets other than .rs files
         src = lib.cleanSourceWith {
           src = ./.; # The original, unfiltered source
-          filter = craneLib.filterCargoSources;
+          filter = path: type:
+            (lib.hasSuffix "\.txt" path) ||
+            (craneLib.filterCargoSources path type);
         };
 
 
@@ -74,12 +76,18 @@
 
         day1 = craneLib.buildPackage (nativeArgs // {
           inherit cargoArtifacts;
+          cargoExtraArgs = "--package day1";
+        });
+        day2 = craneLib.buildPackage (nativeArgs // {
+          inherit cargoArtifacts;
+          cargoExtraArgs = "--package day2";
         });
       in
       {
         checks = {
           # Build the crate as part of `nix flake check` for convenience
           inherit day1;
+          inherit day2;
 
           # Run clippy (and deny all warnings) on the crate source,
           # again, reusing the dependency artifacts from above.
@@ -103,6 +111,15 @@
         apps.day1-part2 = flake-utils.lib.mkApp {
           name = "part2";
           drv = day1;
+        };
+
+        apps.day2-part1 = flake-utils.lib.mkApp {
+          name = "part1";
+          drv = day2;
+        };
+        apps.day2-part2 = flake-utils.lib.mkApp {
+          name = "part2";
+          drv = day2;
         };
 
         devShells.default = craneLib.devShell {
