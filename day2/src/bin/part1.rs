@@ -1,4 +1,4 @@
-use day2::{Cube, Game};
+use day2::Game;
 
 fn main() {
     let input = include_str!("../../input/part1.txt");
@@ -10,7 +10,7 @@ fn process(input: &str) -> String {
     let mut sum = 0;
     for game in input.lines() {
         let game = game.parse::<Game>().unwrap();
-        if game.is_possible(&Cube::Red(12), &Cube::Green(13), &Cube::Blue(14)) {
+        if game.is_possible(12, 13, 14) {
             sum += game.id;
         }
     }

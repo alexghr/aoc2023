@@ -1,14 +1,32 @@
 use snafu::{prelude::*, Whatever};
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, PartialOrd)]
-pub enum Cube {
-    Red(u32),
-    Green(u32),
-    Blue(u32),
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Color {
+    Red,
+    Green,
+    Blue,
 }
 
-impl FromStr for Cube {
+impl FromStr for Color {
+    type Err = Whatever;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "red" => Ok(Color::Red),
+            "green" => Ok(Color::Green),
+            "blue" => Ok(Color::Blue),
+            _ => whatever!("Invalid color: {}", s),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct Cubes {
+    color: Color,
+    count: u32,
+}
+
+impl FromStr for Cubes {
     type Err = Whatever;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (count, color) = s
@@ -19,48 +37,74 @@ impl FromStr for Cube {
             .parse::<u32>()
             .whatever_context("Couldn't parse count as u32 from {count}")?;
 
-        match color {
-            "red" => Ok(Cube::Red(count)),
-            "green" => Ok(Cube::Green(count)),
-            "blue" => Ok(Cube::Blue(count)),
-            _ => whatever!("Invalid color: {}", color),
-        }
+        let color = color.parse::<Color>()?;
+
+        Ok(Cubes { color, count })
     }
 }
 
-pub struct Round(Cube, Cube, Cube);
+struct Round {
+    cubes: Vec<Cubes>,
+}
+
+impl Round {
+    fn count(&self, color: Color) -> u32 {
+        self.cubes
+            .iter()
+            .filter(|cubes| cubes.color == color)
+            .fold(0, |sum, cubes| sum + cubes.count)
+    }
+}
 
 impl FromStr for Round {
     type Err = Whatever;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut red = Cube::Red(0);
-        let mut green = Cube::Green(0);
-        let mut blue = Cube::Blue(0);
+        let cubes = s
+            .split_terminator(',')
+            .map(|cube| cube.trim().parse::<Cubes>())
+            .collect::<Result<Vec<Cubes>, Whatever>>()?;
 
-        for cubes in s.split_terminator(',') {
-            let cubes = cubes.trim().parse::<Cube>()?;
-            match cubes {
-                Cube::Red(_) => red = cubes,
-                Cube::Green(_) => green = cubes,
-                Cube::Blue(_) => blue = cubes,
-            }
-        }
-
-        Ok(Round(red, green, blue))
+        Ok(Round { cubes })
     }
 }
 
 pub struct Game {
     pub id: u32,
-    pub rounds: Vec<Round>,
+    rounds: Vec<Round>,
 }
 
 impl Game {
-    pub fn is_possible(&self, red: &Cube, green: &Cube, blue: &Cube) -> bool {
+    pub fn is_possible(&self, red: u32, green: u32, blue: u32) -> bool {
         self.rounds.iter().all(|round| {
-            let Round(red_count, green_count, blue_count) = round;
-            red_count <= red && green_count <= green && blue_count <= blue
+            round.count(Color::Red) < red
+                && round.count(Color::Green) < green
+                && round.count(Color::Blue) < blue
         })
+    }
+
+    pub fn power(&self) -> u32 {
+        let red = self
+            .rounds
+            .iter()
+            .map(|round| round.count(Color::Red))
+            .max()
+            .map_or(1, |x| if x == 0 { 1 } else { x });
+
+        let green = self
+            .rounds
+            .iter()
+            .map(|round| round.count(Color::Green))
+            .max()
+            .map_or(1, |x| if x == 0 { 1 } else { x });
+
+        let blue = self
+            .rounds
+            .iter()
+            .map(|round| round.count(Color::Blue))
+            .max()
+            .map_or(1, |x| if x == 0 { 1 } else { x });
+
+        red * green * blue
     }
 }
 
